@@ -1,0 +1,5 @@
+src/mm_device_adapters/libs/
+*.egg-info
+wheelhouse/
+dist/
+build/
