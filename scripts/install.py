@@ -11,11 +11,9 @@ import urllib.request
 from functools import cache
 from pathlib import Path
 from platform import machine, system
-from typing import TYPE_CHECKING, Protocol
 from urllib.request import urlopen, urlretrieve
-import certifi
-from matplotlib.pylab import f
 
+import certifi
 
 PLATFORM = system()
 MACH = machine()
@@ -23,8 +21,9 @@ BASE_URL = "https://download.micro-manager.org"
 # APPLE_SILICON = PLATFORM == "Darwin" and MACH == "arm64"
 APPLE_SILICON = False
 if PLATFORM not in ("Darwin", "Windows") or APPLE_SILICON:
+    msg = f"Unsupported platform/architecture: {PLATFORM}/{MACH}"
     raise RuntimeError(
-        f"Unsupported platform/architecture: {PLATFORM}/{MACH}", "bold red", ":x:"
+        msg, "bold red", ":x:",
     )
 plat = {"Darwin": "Mac", "Windows": "Windows"}.get(PLATFORM)
 DOWNLOADS_URL = f"{BASE_URL}/nightly/2.0/{plat}/"
@@ -53,7 +52,7 @@ def _win_install(exe: Path, dest: Path) -> None:
             lib.unlink()  # pragma: no cover
 
     # delete all empty directories in dest:
-    for root, dirs, files in os.walk(dest, topdown=False):
+    for root, dirs, _files in os.walk(dest, topdown=False):
         # Remove empty directories
         for dir_name in dirs:
             dir_path = Path(root) / dir_name
@@ -68,11 +67,12 @@ def _mac_install(dmg: Path, dest: Path) -> None:
     """Install Micro-Manager `dmg` to `dest`."""
     # with progress bar, mount dmg
     proc = subprocess.run(
-        ["hdiutil", "attach", "-nobrowse", str(dmg)], capture_output=True
+        ["hdiutil", "attach", "-nobrowse", str(dmg)], capture_output=True, check=False,
     )
     if proc.returncode != 0:  # pragma: no cover
+        msg = f"\nError mounting {dmg.name}:\n{proc.stderr.decode()}"
         raise RuntimeError(
-            f"\nError mounting {dmg.name}:\n{proc.stderr.decode()}",
+            msg,
             "bold red",
         )
 
@@ -85,10 +85,13 @@ def _mac_install(dmg: Path, dest: Path) -> None:
         try:
             src = next(Path(volume).glob("Micro-Manager*"))
         except StopIteration:  # pragma: no cover
-            raise RuntimeError(
+            msg = (
                 "\nError: Could not find Micro-Manager in dmg.\n"
                 "Please report this at https://github.com/pymmcore-plus/"
-                "pymmcore-plus/issues/new",
+                "pymmcore-plus/issues/new"
+            )
+            raise RuntimeError(
+                msg,
                 "bold red",
             )
 
@@ -96,12 +99,12 @@ def _mac_install(dmg: Path, dest: Path) -> None:
             shutil.copy(lib, dest / lib.name)
     finally:
         subprocess.run(
-            ["hdiutil", "detach", disk_id.strip()], check=True, capture_output=True
+            ["hdiutil", "detach", disk_id.strip()], check=True, capture_output=True,
         )
 
     # fix gatekeeper ... may require password?  But better if sudo not needed.
     cmd = ["xattr", "-r", "-d", "com.apple.quarantine", str(dest)]
-    subprocess.run(cmd)
+    subprocess.run(cmd, check=False)
 
 
 @cache
@@ -149,6 +152,7 @@ def install(
         Which release to install, by default "latest-compatible". Should be a date in the form
         YYYYMMDD, "latest" to install the latest nightly release, or "latest-compatible"
         to install the latest nightly release.
+
     """
     # Inside the python package, we want to place the libraries in the mm-install subdirectory
     if release == "latest":
@@ -162,15 +166,15 @@ def install(
         if release not in available:
             n = 15
             avail = ", ".join(list(available)[:n]) + " ..."
+            msg = f"Release {release!r} not found. Last {n} releases:\n{avail}"
             raise RuntimeError(
-                f"Release {release!r} not found. Last {n} releases:\n{avail}"
+                msg,
             )
         url = available[release]
 
     with tempfile.TemporaryDirectory() as tmpdir:
         # download
         installer = Path(tmpdir) / url.split("/")[-1]
-        print(f"Downloading {url} ...")
         _download_url(url=url, output_path=installer)
 
         # install
@@ -181,7 +185,6 @@ def install(
             # For windows, directly install to destination directory
             _win_install(installer, dest)
 
-    print(f"Installed to {str(dest)!r}")
 
 
 if __name__ == "__main__":
