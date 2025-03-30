@@ -14,6 +14,7 @@ from platform import machine, system
 from typing import TYPE_CHECKING, Protocol
 from urllib.request import urlopen, urlretrieve
 import certifi
+from matplotlib.pylab import f
 
 
 PLATFORM = system()
@@ -44,6 +45,23 @@ def _get_download_name(url: str) -> str:
 def _win_install(exe: Path, dest: Path) -> None:
     cmd = [str(exe), "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", f"/DIR={dest}"]
     subprocess.run(cmd, check=True)
+    for lib in exe.rglob("*"):
+        if lib.name in {"ImageJ.exe", "ImageJ.cfg", "Micro-Manager.cfg"} or (
+            lib.suffix not in {".dll", ".exe", ".cfg"}
+        ):
+            # erase non-dll files, since they are not needed for Micro-Manager
+            lib.unlink()  # pragma: no cover
+
+    # delete all empty directories in dest:
+    for root, dirs, files in os.walk(dest, topdown=False):
+        # Remove empty directories
+        for dir_name in dirs:
+            dir_path = Path(root) / dir_name
+            if not os.listdir(dir_path):
+                try:
+                    dir_path.rmdir()
+                except Exception:  # pragma: no cover
+                    continue
 
 
 def _mac_install(dmg: Path, dest: Path) -> None:
