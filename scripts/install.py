@@ -23,7 +23,9 @@ APPLE_SILICON = False
 if PLATFORM not in ("Darwin", "Windows") or APPLE_SILICON:
     msg = f"Unsupported platform/architecture: {PLATFORM}/{MACH}"
     raise RuntimeError(
-        msg, "bold red", ":x:",
+        msg,
+        "bold red",
+        ":x:",
     )
 plat = {"Darwin": "Mac", "Windows": "Windows"}.get(PLATFORM)
 DOWNLOADS_URL = f"{BASE_URL}/nightly/2.0/{plat}/"
@@ -67,7 +69,9 @@ def _mac_install(dmg: Path, dest: Path) -> None:
     """Install Micro-Manager `dmg` to `dest`."""
     # with progress bar, mount dmg
     proc = subprocess.run(
-        ["hdiutil", "attach", "-nobrowse", str(dmg)], capture_output=True, check=False,
+        ["hdiutil", "attach", "-nobrowse", str(dmg)],
+        capture_output=True,
+        check=False,
     )
     if proc.returncode != 0:  # pragma: no cover
         msg = f"\nError mounting {dmg.name}:\n{proc.stderr.decode()}"
@@ -99,7 +103,9 @@ def _mac_install(dmg: Path, dest: Path) -> None:
             shutil.copy(lib, dest / lib.name)
     finally:
         subprocess.run(
-            ["hdiutil", "detach", disk_id.strip()], check=True, capture_output=True,
+            ["hdiutil", "detach", disk_id.strip()],
+            check=True,
+            capture_output=True,
         )
 
     # fix gatekeeper ... may require password?  But better if sudo not needed.
@@ -186,8 +192,5 @@ def install(
             _win_install(installer, dest)
 
 
-
 if __name__ == "__main__":
-    import sys
-
     install(sys.argv[1])
