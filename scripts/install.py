@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from itertools import chain
 import os
 import re
 import shutil
@@ -31,38 +32,17 @@ plat = {"Darwin": "Mac", "Windows": "Windows"}.get(PLATFORM)
 DOWNLOADS_URL = f"{BASE_URL}/nightly/2.0/{plat}/"
 
 
-def _get_download_name(url: str) -> str:
-    """Return the name of the file to be downloaded from `url`."""
-    # Set up SSL context with certifi
-    ssl_context = ssl.create_default_context(cafile=certifi.where())
-    with urlopen(url, context=ssl_context) as tmp:
-        content: str = tmp.headers.get("Content-Disposition")
-        for part in content.split(";"):
-            if "filename=" in part:
-                return part.split("=")[1].strip('"')
-    return ""
-
-
 def _win_install(exe: Path, dest: Path) -> None:
-    cmd = [str(exe), "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", f"/DIR={dest}"]
+    tmp_dest = Path(tempfile.mkdtemp())
+    cmd = [str(exe), "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", f"/DIR={tmp_dest}"]
     subprocess.run(cmd, check=True)
-    for lib in exe.rglob("*"):
-        if lib.name in {"ImageJ.exe", "ImageJ.cfg", "Micro-Manager.cfg"} or (
-            lib.suffix not in {".dll", ".exe", ".cfg"}
-        ):
-            # erase non-dll files, since they are not needed for Micro-Manager
-            lib.unlink()  # pragma: no cover
-
-    # delete all empty directories in dest:
-    for root, dirs, _files in os.walk(dest, topdown=False):
-        # Remove empty directories
-        for dir_name in dirs:
-            dir_path = Path(root) / dir_name
-            if not os.listdir(dir_path):
-                try:
-                    dir_path.rmdir()
-                except Exception:  # pragma: no cover
-                    continue
+    for lib in chain(tmp_dest.rglob("*.dll"), tmp_dest.rglob("*.exe")):
+        if lib.name.startswith("ImageJ"):
+            continue
+        rel_path = lib.relative_to(tmp_dest)
+        lib_dest = dest / rel_path
+        lib_dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(lib, dest / lib.name)
 
 
 def _mac_install(dmg: Path, dest: Path) -> None:
