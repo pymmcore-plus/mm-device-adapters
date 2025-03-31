@@ -29,13 +29,16 @@ jobs:
         shell: bash
         run: |
           uv build --wheel
-          uvx wheel tags --remove --abi-tag none --python-tag py3 wheelhouse/*.whl
+          uvx wheel tags --remove --abi-tag none --python-tag py3 dist/*.whl
+      - if: ${{ runner.os }} == 'macOS'
+        run: uvx wheel tags --remove --platform-tag macosx_10_9_x86_64 dist/*.whl
 
       - name: Upload wheels artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: cibw-wheels-${{ runner.os }}-${{ runner.arch }}
-          path: ./wheelhouse/*.whl
+          name: wheels-${{ runner.os }}-${{ runner.arch }}
+          path: ./dist/*.whl
+
   publish:
     name: Publish to PyPI
     needs: [build-wheels]
@@ -47,7 +50,7 @@ jobs:
       - name: Get wheels
         uses: actions/download-artifact@v4
         with:
-          pattern: cibw-wheels-*
+          pattern: wheels-*
           path: dist
           merge-multiple: true
 
