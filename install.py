@@ -155,10 +155,7 @@ def install(dest: Path | str | None = None, release: str = "latest") -> tuple[st
             # For windows, directly install to destination directory
             _win_install(installer, dest)
 
-    try:
-        div = str(get_device_interface_version(str(dest)))
-    except Exception:
-        div = "00"
+    div = str(get_device_interface_version(str(dest)))
     return div, release
 
 
