@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=42", "wheel", "setuptools_scm[toml]"]
+requires = ["setuptools>=42", "wheel", "setuptools_scm[toml]", "certifi"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.package-data]
@@ -10,15 +10,11 @@ name = "mm-device-adapters"
 description = "Pre-compiled device adapters for Micro-Manager"
 readme = "README.md"
 requires-python = ">=3.9"
-license = { text = "LGPL-2.1-only" }
+license = "LGPL-2.1-only"
 dynamic = ["version"]
 authors = [{ name = "Talley Lambert", email = "talley.lambert@gmail.com" }]
 
 
 [tool.cibuildwheel]
 build = ["cp39-macosx_*", "cp39-win_amd64"]
-before-build = [
-    "pip install certifi",
-    "python scripts/install.py {package}/src/mm_device_adapters/libs",
-]
 repair-wheel-command = ""

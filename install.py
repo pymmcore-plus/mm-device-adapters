@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from itertools import chain
 import os
 import re
 import shutil
@@ -10,6 +9,7 @@ import sys
 import tempfile
 import urllib.request
 from functools import cache
+from itertools import chain
 from pathlib import Path
 from platform import machine, system
 from urllib.request import urlopen, urlretrieve
@@ -19,15 +19,10 @@ import certifi
 PLATFORM = system()
 MACH = machine()
 BASE_URL = "https://download.micro-manager.org"
-# APPLE_SILICON = PLATFORM == "Darwin" and MACH == "arm64"
-APPLE_SILICON = False
+APPLE_SILICON = PLATFORM == "Darwin" and MACH == "arm64"
 if PLATFORM not in ("Darwin", "Windows") or APPLE_SILICON:
-    msg = f"Unsupported platform/architecture: {PLATFORM}/{MACH}"
-    raise RuntimeError(
-        msg,
-        "bold red",
-        ":x:",
-    )
+    raise RuntimeError(f"Unsupported platform/architecture: {PLATFORM}/{MACH}")
+
 plat = {"Darwin": "Mac", "Windows": "Windows"}.get(PLATFORM)
 DOWNLOADS_URL = f"{BASE_URL}/nightly/2.0/{plat}/"
 
@@ -52,12 +47,9 @@ def _mac_install(dmg: Path, dest: Path) -> None:
         capture_output=True,
         check=False,
     )
-    if proc.returncode != 0:  # pragma: no cover
+    if proc.returncode != 0:
         msg = f"\nError mounting {dmg.name}:\n{proc.stderr.decode()}"
-        raise RuntimeError(
-            msg,
-            "bold red",
-        )
+        raise RuntimeError(msg)
 
     # get mount point
     disk_id, *_, volume = proc.stdout.splitlines()[-1].decode().split("\t")
@@ -67,7 +59,7 @@ def _mac_install(dmg: Path, dest: Path) -> None:
         # with progress bar, mount dmg
         try:
             src = next(Path(volume).glob("Micro-Manager*"))
-        except StopIteration:  # pragma: no cover
+        except StopIteration:
             msg = (
                 "\nError: Could not find Micro-Manager in dmg.\n"
                 "Please report this at https://github.com/pymmcore-plus/"
@@ -75,7 +67,6 @@ def _mac_install(dmg: Path, dest: Path) -> None:
             )
             raise RuntimeError(
                 msg,
-                "bold red",
             )
 
         for lib in src.glob("libmmgr*"):
@@ -119,13 +110,11 @@ def _download_url(url: str, output_path: Path, show_progress: bool = True) -> No
     urllib.request.install_opener(opener)
 
     # Download the file
+    print(f"downloading {url} ...")
     urlretrieve(url=url, filename=output_path)
 
 
-def install(
-    dest: Path | str,
-    release: str = "latest",
-) -> None:
+def install(dest: Path | str | None = None, release: str = "latest") -> tuple[str, str]:
     """Install Micro-Manager to `dest`.
 
     Parameters
@@ -139,23 +128,19 @@ def install(
         to install the latest nightly release.
 
     """
-    # Inside the python package, we want to place the libraries in the mm-install subdirectory
+    if not dest:
+        dest = Path(__file__).parent / "src" / "mm_device_adapters" / "libs"
+
+    available = available_versions()
     if release == "latest":
-        plat = {
-            "Darwin": "macos/Micro-Manager-x86_64-latest.dmg",
-            "Windows": "windows/MMSetup_x64_latest.exe",
-        }[PLATFORM]
-        url = f"{BASE_URL}/latest/{plat}"
-    else:
-        available = available_versions()
-        if release not in available:
-            n = 15
-            avail = ", ".join(list(available)[:n]) + " ..."
-            msg = f"Release {release!r} not found. Last {n} releases:\n{avail}"
-            raise RuntimeError(
-                msg,
-            )
-        url = available[release]
+        release = sorted(available)[-1]
+    elif release not in available:
+        n = 30
+        avail = ", ".join(sorted(available)[-n:]) + " ..."
+        raise RuntimeError(
+            f"Release {release!r} not found. Last {n} releases:\n{avail}"
+        )
+    url = available[release]
 
     with tempfile.TemporaryDirectory() as tmpdir:
         # download
@@ -169,6 +154,35 @@ def install(
         elif PLATFORM == "Windows":
             # For windows, directly install to destination directory
             _win_install(installer, dest)
+
+    try:
+        div = str(get_device_interface_version(str(dest)))
+    except Exception:
+        div = "00"
+    return div, release
+
+
+def get_device_interface_version(lib_dir: str) -> int:
+    """Return the device interface version from the given library path."""
+    import ctypes
+
+    lib_path = next(f for f in os.listdir(lib_dir) if "_dal_" in f)
+
+    if sys.platform.startswith("win"):
+        lib = ctypes.WinDLL(lib_path)
+    else:
+        lib = ctypes.CDLL(lib_path)
+
+    try:
+        func = lib.GetDeviceInterfaceVersion
+    except AttributeError:
+        raise RuntimeError(
+            f"Function 'GetDeviceInterfaceVersion' not found in {lib_path}"
+        ) from None
+
+    func.restype = ctypes.c_long
+    func.argtypes = []
+    return func()  # type: ignore[no-any-return]
 
 
 if __name__ == "__main__":

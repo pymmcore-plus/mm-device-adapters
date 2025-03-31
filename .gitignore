@@ -3,3 +3,4 @@ src/mm_device_adapters/libs/
 wheelhouse/
 dist/
 build/
+**/__pycache__/*
