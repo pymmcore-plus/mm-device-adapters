@@ -37,12 +37,11 @@ def _win_install(exe: Path, dest: Path) -> None:
     cmd = [str(exe), "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", f"/DIR={tmp_dest}"]
     subprocess.run(cmd, check=True)
     for lib in chain(tmp_dest.rglob("*.dll"), tmp_dest.rglob("*.exe")):
-        if lib.name.startswith("ImageJ"):
+        if any(x in str(lib) for x in ("jre", "ImageJ", "java")):
             continue
-        rel_path = lib.relative_to(tmp_dest)
-        lib_dest = dest / rel_path
+        lib_dest = dest / lib.relative_to(tmp_dest)
         lib_dest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy(lib, dest / lib.name)
+        shutil.copy(lib, lib_dest)
 
 
 def _mac_install(dmg: Path, dest: Path) -> None:
