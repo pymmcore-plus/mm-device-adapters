@@ -162,17 +162,17 @@ def install(dest: Path | str | None = None, release: str = "latest") -> tuple[st
 
 def get_device_interface_version(lib_path: Path) -> int:
     """Return the device interface version from the given library path."""
-    lib_path = next(f for f in lib_path.glob("*_dal_*"))
 
+    dll = str(next(f for f in lib_path.glob("*_dal_*")))
     if sys.platform.startswith("win"):
-        lib = ctypes.WinDLL(lib_path)
+        lib = ctypes.WinDLL(dll)
     else:
-        lib = ctypes.CDLL(lib_path)
+        lib = ctypes.CDLL(dll)
 
     try:
         func = lib.GetDeviceInterfaceVersion
     except AttributeError:
-        msg = f"Function 'GetDeviceInterfaceVersion' not found in {lib_path}"
+        msg = f"Function 'GetDeviceInterfaceVersion' not found in {dll}"
         raise RuntimeError(msg) from None
 
     func.restype = ctypes.c_long
