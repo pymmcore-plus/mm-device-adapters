@@ -53,7 +53,7 @@ def main() -> None:
             pass
 
     # Convert sets to sorted lists for JSON serialization (newest dates first)
-    result = {
+    adapters = {
         adapter: sorted(dates, reverse=True)
         for adapter, dates in changes_by_adapter.items()
     }
@@ -62,8 +62,7 @@ def main() -> None:
 
     # Also save to a file
     with open("device_adapter_changes.json", "w") as f:
-        json.dump(result, f, indent=2)
-
+        json.dump(adapters, f, indent=2)
 
 
 if __name__ == "__main__":

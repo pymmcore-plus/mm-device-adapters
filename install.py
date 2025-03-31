@@ -39,6 +39,9 @@ def _win_install(exe: Path, dest: Path) -> None:
         lib_dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(lib, lib_dest)
 
+    mmcfg = next(tmp_dest.glob("MMConfig_demo.cfg"))
+    shutil.copy(mmcfg, dest / mmcfg.relative_to(tmp_dest))
+
 
 def _mac_install(dmg: Path, dest: Path) -> None:
     """Install Micro-Manager `dmg` to `dest`."""
@@ -72,6 +75,10 @@ def _mac_install(dmg: Path, dest: Path) -> None:
 
         for lib in src.glob("libmmgr*"):
             shutil.copy(lib, dest / lib.name)
+
+        mmcfg = next(src.glob("MMConfig_demo.cfg"))
+        shutil.copy(mmcfg, dest / mmcfg.relative_to(src))
+
     finally:
         subprocess.run(
             ["hdiutil", "detach", disk_id.strip()],
@@ -162,7 +169,6 @@ def install(dest: Path | str | None = None, release: str = "latest") -> tuple[st
 
 def get_device_interface_version(lib_path: Path) -> int:
     """Return the device interface version from the given library path."""
-
     dll = str(next(f for f in lib_path.glob("*_dal_*")))
     if sys.platform.startswith("win"):
         lib = ctypes.WinDLL(dll)
