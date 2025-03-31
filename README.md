@@ -1,5 +1,9 @@
 # mm-device-adapters
 
+[![License](https://img.shields.io/pypi/l/mm-device-adapters.svg?color=green)](https://github.com/mm-device-adapters/mm-device-adapters/raw/master/LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/mm-device-adapters.svg?color=green)](https://pypi.org/project/mm-device-adapters)
+[![Build](https://github.com/pymmcore-plus/mm-device-adapters/actions/workflows/ci.yml/badge.svg)](https://github.com/pymmcore-plus/mm-device-adapters/actions/workflows/ci.yml)
+
 Pre-compiled libraries for Micro-Manager.
 
 This is a metapackage that provides pre-compiled Micro-Manager shared libraries
