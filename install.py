@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import os
+import ctypes
 import re
 import shutil
 import ssl
@@ -21,7 +21,8 @@ MACH = machine()
 BASE_URL = "https://download.micro-manager.org"
 APPLE_SILICON = PLATFORM == "Darwin" and MACH == "arm64"
 if PLATFORM not in ("Darwin", "Windows") or APPLE_SILICON:
-    raise RuntimeError(f"Unsupported platform/architecture: {PLATFORM}/{MACH}")
+    msg = f"Unsupported platform/architecture: {PLATFORM}/{MACH}"
+    raise RuntimeError(msg)
 
 plat = {"Darwin": "Mac", "Windows": "Windows"}.get(PLATFORM)
 DOWNLOADS_URL = f"{BASE_URL}/nightly/2.0/{plat}/"
@@ -110,7 +111,6 @@ def _download_url(url: str, output_path: Path, show_progress: bool = True) -> No
     urllib.request.install_opener(opener)
 
     # Download the file
-    print(f"downloading {url} ...")
     urlretrieve(url=url, filename=output_path)
 
 
@@ -137,8 +137,9 @@ def install(dest: Path | str | None = None, release: str = "latest") -> tuple[st
     elif release not in available:
         n = 30
         avail = ", ".join(sorted(available)[-n:]) + " ..."
+        msg = f"Release {release!r} not found. Last {n} releases:\n{avail}"
         raise RuntimeError(
-            f"Release {release!r} not found. Last {n} releases:\n{avail}"
+            msg,
         )
     url = available[release]
 
@@ -155,15 +156,13 @@ def install(dest: Path | str | None = None, release: str = "latest") -> tuple[st
             # For windows, directly install to destination directory
             _win_install(installer, dest)
 
-    div = str(get_device_interface_version(str(dest)))
+    div = str(get_device_interface_version(dest))
     return div, release
 
 
-def get_device_interface_version(lib_dir: str) -> int:
+def get_device_interface_version(lib_path: Path) -> int:
     """Return the device interface version from the given library path."""
-    import ctypes
-
-    lib_path = next(f for f in os.listdir(lib_dir) if "_dal_" in f)
+    lib_path = next(f for f in lib_path.glob("*_dal_*"))
 
     if sys.platform.startswith("win"):
         lib = ctypes.WinDLL(lib_path)
@@ -173,9 +172,8 @@ def get_device_interface_version(lib_dir: str) -> int:
     try:
         func = lib.GetDeviceInterfaceVersion
     except AttributeError:
-        raise RuntimeError(
-            f"Function 'GetDeviceInterfaceVersion' not found in {lib_path}"
-        ) from None
+        msg = f"Function 'GetDeviceInterfaceVersion' not found in {lib_path}"
+        raise RuntimeError(msg) from None
 
     func.restype = ctypes.c_long
     func.argtypes = []
