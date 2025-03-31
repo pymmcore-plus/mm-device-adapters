@@ -26,6 +26,7 @@ jobs:
         with:
           python-version: 3.9
       - name: build
+        shell: bash
         run: |
           uv build --wheel
           uvx wheel tags --remove --abi-tag none --python-tag py3 wheelhouse/*.whl
