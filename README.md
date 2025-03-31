@@ -13,13 +13,4 @@ pip install mm-device-adapters
 
 ## Usage
 
-This package only provides the shared libraries, which will be installed to the `mm-install` directory in your site-packages folder.
-
-## Building
-
-This package is built using [cibuildwheel](https://cibuildwheel.readthedocs.io/). To build the wheels:
-
-```bash
-pip install cibuildwheel
-python -m cibuildwheel
-```
+This package only provides the shared libraries, which will be installed to `mm-device-adapters/lib` directory in your site-packages folder.
